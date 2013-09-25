@@ -1,13 +1,14 @@
 
 const TEAM_SURVIVORS = 2;
 const TEAM_ZOMBIES = 3;
-const ZOMBIES_PER_HERO = 20;
+const ZOMBIES_PER_HERO = 10; //cut in half from 20 to 10 so that 10 reg zombie + 10 flying spawn
 
 var timers = require('timers');
 var zombies = 0.0;
 var nextFrameFuncs = [];
 var time = 0.0;
 var spawningZombie = false;
+var spawningFlyingZombie = false;
 var spawningZombieFactor = 1.0;
 var playerManager = null;
 
@@ -43,7 +44,7 @@ game.hook("OnGameFrame", function(){
 	
 	nextFrameFuncs = [];
 	
-	blockHeroes();
+	blockHeroes(); 
 	
 	if(game.rules.props.m_nGameState != 5) return;
 	time = game.rules.props.m_fGameTime - game.rules.props.m_flGameStartTime;
@@ -51,7 +52,7 @@ game.hook("OnGameFrame", function(){
 	
 	var zombieFactor = Math.pow(time/300, 2) + 0.01;
 	spawnZombies(zombieFactor);
-	checkDefeat();
+	checkDefeat(); //comment to disable defeat check
 });
 
 game.hook("Dota_OnUnitParsed", function(unit, keyvalues){
@@ -71,6 +72,31 @@ game.hook("Dota_OnUnitParsed", function(unit, keyvalues){
 		keyvalues["Ability2"] = "";
 		
 	}
+    
+    if(spawningFlyingZombie){
+    var f = Math.sqrt(spawningZombieFactor);
+        keyvalues["StatusHealth"] = (15 + Math.max(Math.floor(time - 30) / 2, 0)) * ((f - 1) / 30 + 1);
+		keyvalues["StatusHealthRegen"] = Math.floor(Math.sqrt(f)) / 4;
+		keyvalues["ArmorPhysical"] = Math.floor(f - 1);
+		keyvalues["AttackDamageMin"] = 17 * f * Math.min(1, time / 360 + 0.5);
+		keyvalues["AttackDamageMax"] = 25 * f * Math.min(1, time / 360 + 0.5);
+		keyvalues["BountyGoldMin"] = 20 * Math.sqrt(f);
+		keyvalues["BountyGoldMax"] = 20 * Math.sqrt(f);
+		keyvalues["ModelScale"] = Math.min(0.95 + 0.1 * f, 2);
+		keyvalues["BountyXP"] = 75 * f;
+		
+		keyvalues["Ability1"] = "";
+		keyvalues["Ability2"] = "";
+        
+        keyvalues["MovementCapabilities"] = "DOTA_UNIT_CAP_MOVE_FLY";
+        keyvalues["MovementSpeed"] = 400;
+        keyvalues["VisionDaytimeRange"] = 1800;
+        keyvalues["VisionNighttimeRange"] = 1800;
+        keyvalues["ProjectileModel"] = "ranged_tower_good";
+        keyvalues["AttackRate"] = 2; // Speed of attack.
+        keyvalues["AttackAcquisitionRange"] = 800; // Range within a target can be acquired
+        keyvalues["AutoAttacksByDefault"] = 1;      
+    }
 });
 
 game.hook("Dota_OnUnitThink", function(unit){
@@ -150,6 +176,7 @@ function spawnZombies(factor){
 				
 				hero.zombieFactor -= thisFactor;
 				hero.zombies.push(spawnZombie(hero, thisFactor));
+                hero.zombies.push(spawnFlyingZombie(hero, thisFactor)); //add flying zombie
 			}else if(time > 30) {
 				hero.zombieFactor += factor * Math.pow(time / 180, 2);
 			}
@@ -193,6 +220,42 @@ function spawnZombie(hero, factor){
 	return zombie;
 }
 
+function spawnFlyingZombie(hero, factor){
+	spawningFlyingZombie = true;
+	spawningZombieFactor = factor;
+	var zombie = dota.createUnit("npc_dota_visage_familiar1", hero.netprops.m_iTeamNum == 2 ? 3 : 2);
+	
+	// The zombie will appear 1800 units away from the hero
+	var vec = hero.netprops.m_vecOrigin;
+	var ang = Math.random() * 2 * Math.PI;
+	var d = 1800;
+	
+	var x = vec.x + Math.cos(ang) * d;
+	var y = vec.y + Math.sin(ang) * d;
+	zombie.isZombie = true;
+	zombie.hero = hero;
+	
+	dota.findClearSpaceForUnit(zombie, x, y, vec.z);
+	
+	// This needs to run on the next frame
+	nextFrameFuncs.push(function(){
+		// We make the zombie controllable by the player 0, then remove that, just so we can give the zombies an order
+		dota.setUnitControllableByPlayer(zombie, 0, true);
+		dota.executeOrders(0, dota.ORDER_TYPE_ATTACK, [zombie], hero, null, false, vec);
+		dota.setUnitControllableByPlayer(zombie, 0, false);
+	});
+	
+	timers.setTimeout(function(){
+		hero.zombies.remove(zombie);
+		if(zombie.isValid()){
+			dota.remove(zombie);
+		}
+	}, 30000);
+	
+	spawningFlyingZombie = false;
+	return zombie;
+}
+
 var hasLost = false;
 function checkDefeat(){
 	if(hasLost) return;
@@ -231,16 +294,18 @@ function blockHeroes(){
 	dota.setHeroAvailable(dota.HERO_UNDYING, false);
 	
 	// Temporary, once we have flying zombies, we can remove those.
-	dota.setHeroAvailable(dota.HERO_FURION, false);
-	dota.setHeroAvailable(dota.HERO_QUEEN_OF_PAIN, false);
-	dota.setHeroAvailable(dota.HERO_MORPHLING, false);
-	dota.setHeroAvailable(dota.HERO_SAND_KING, false);
-	dota.setHeroAvailable(dota.HERO_BATRIDER, false);
-	dota.setHeroAvailable(dota.HERO_ANTIMAGE, false);
-	dota.setHeroAvailable(dota.HERO_SPECTRE, false);
-	dota.setHeroAvailable(dota.HERO_FACELESS_VOID, false);
-	dota.setHeroAvailable(dota.HERO_MIRANA, false);
-	dota.setHeroAvailable(dota.HERO_PUCK, false);
+	// dota.setHeroAvailable(dota.HERO_FURION, false);
+	// dota.setHeroAvailable(dota.HERO_QUEEN_OF_PAIN, false);
+	// dota.setHeroAvailable(dota.HERO_MORPHLING, false);
+	// dota.setHeroAvailable(dota.HERO_SAND_KING, false);
+	// dota.setHeroAvailable(dota.HERO_BATRIDER, false);
+	// dota.setHeroAvailable(dota.HERO_ANTIMAGE, false);
+	// dota.setHeroAvailable(dota.HERO_SPECTRE, false);
+	// dota.setHeroAvailable(dota.HERO_FACELESS_VOID, false);
+	// dota.setHeroAvailable(dota.HERO_MIRANA, false);
+	// dota.setHeroAvailable(dota.HERO_PUCK, false);
+    // dota.setHeroAvailable(dota.HERO_IO, false); //should also disable wisp
+     
 }
 
 // For testing
