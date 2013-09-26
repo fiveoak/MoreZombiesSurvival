@@ -1,7 +1,11 @@
 
 const TEAM_SURVIVORS = 2;
 const TEAM_ZOMBIES = 3;
-const ZOMBIES_PER_HERO = 10; //cut in half from 20 to 10 so that 10 reg zombie + 10 flying spawn
+const ZOMBIES_PER_HERO = 20; //20 zombies per hero
+const REGULAR_ZOMBIE_TYPE = 1;
+const FLYING_ZOMBIE_TYPE = 2;
+
+const DEBUG_MODE = 0; //0: debug inactive, 1: debug active
 
 var timers = require('timers');
 var zombies = 0.0;
@@ -48,45 +52,35 @@ game.hook("OnGameFrame", function(){
 	
 	if(game.rules.props.m_nGameState != 5) return;
 	time = game.rules.props.m_fGameTime - game.rules.props.m_flGameStartTime;
-	if(time < 0.0) return;
+    //time = game.rules.props.m_fGameTime - game.rules.props.m_flGameStartTime + 120;
+    //debug: use 2nd time with 120s added
+    
+	if(time < 0.0) return; //debug: comment out to start zombies before 0.0
+    
 	
 	var zombieFactor = Math.pow(time/300, 2) + 0.01;
 	spawnZombies(zombieFactor);
-	checkDefeat(); //comment to disable defeat check
+	checkDefeat(); //debug:: comment to disable defeat check
 });
 
 game.hook("Dota_OnUnitParsed", function(unit, keyvalues){
-	if(spawningZombie){
-		var f = Math.sqrt(spawningZombieFactor);
-		keyvalues["StatusHealth"] = (30 + Math.max(Math.floor(time - 30) / 2, 0)) * ((f - 1) / 30 + 1);
-		keyvalues["StatusHealthRegen"] = Math.floor(Math.sqrt(f)) / 2;
-		keyvalues["ArmorPhysical"] = Math.floor(f - 1);
-		keyvalues["AttackDamageMin"] = 37 * f * Math.min(1, time / 360 + 0.5);
-		keyvalues["AttackDamageMax"] = 45 * f * Math.min(1, time / 360 + 0.5);
-		keyvalues["BountyGoldMin"] = 30 * Math.sqrt(f);
-		keyvalues["BountyGoldMax"] = 30 * Math.sqrt(f);
-		keyvalues["ModelScale"] = Math.min(0.95 + 0.1 * f, 2);
-		keyvalues["BountyXP"] = 75 * f;
-		
-		keyvalues["Ability1"] = "";
-		keyvalues["Ability2"] = "";
-		
-	}
-    
+var f = Math.sqrt(spawningZombieFactor);
+
     if(spawningFlyingZombie){
-    var f = Math.sqrt(spawningZombieFactor);
+    //flying zombie specific stuff here
         keyvalues["StatusHealth"] = (15 + Math.max(Math.floor(time - 30) / 2, 0)) * ((f - 1) / 30 + 1);
 		keyvalues["StatusHealthRegen"] = Math.floor(Math.sqrt(f)) / 4;
 		keyvalues["ArmorPhysical"] = Math.floor(f - 1);
-		keyvalues["AttackDamageMin"] = 17 * f * Math.min(1, time / 360 + 0.5);
-		keyvalues["AttackDamageMax"] = 25 * f * Math.min(1, time / 360 + 0.5);
+		keyvalues["AttackDamageMin"] = 11 * f * Math.min(1, time / 360 + 0.5);
+		keyvalues["AttackDamageMax"] = 15 * f * Math.min(1, time / 360 + 0.5);
 		keyvalues["BountyGoldMin"] = 20 * Math.sqrt(f);
 		keyvalues["BountyGoldMax"] = 20 * Math.sqrt(f);
 		keyvalues["ModelScale"] = Math.min(0.95 + 0.1 * f, 2);
 		keyvalues["BountyXP"] = 75 * f;
+        
+        keyvalues["Ability1"] = "";
+        keyvalues["Ability2"] = "";
 		
-		keyvalues["Ability1"] = "";
-		keyvalues["Ability2"] = "";
         
         keyvalues["MovementCapabilities"] = "DOTA_UNIT_CAP_MOVE_FLY";
         keyvalues["MovementSpeed"] = 400;
@@ -96,7 +90,34 @@ game.hook("Dota_OnUnitParsed", function(unit, keyvalues){
         keyvalues["AttackRate"] = 2; // Speed of attack.
         keyvalues["AttackAcquisitionRange"] = 800; // Range within a target can be acquired
         keyvalues["AutoAttacksByDefault"] = 1;      
+        keyvalues["ConsideredHero"] = 0;  
+        keyvalues["MagicalResistance"] = 0; //remove imba magic resistance from visage familiars  
+        keyvalues["IsAncient"] = 0; //remove ancient status from new flying zombies based off of drake, otherwise spells wont hit
+        keyvalues["UnitRelationshipClass"] = "DOTA_NPC_UNIT_RELATIONSHIP_TYPE_DEFAULT"; //aha! pretty sure this is why visage birds werent getting autoattacked	
+        
+        //values to maybe set if not using visage bird as the base unit:
+        //keyvalues["Model"] = "models/heroes/visage/visage_familiar.mdl"; //look like a sicknasty gargoyle
+        //keyvalues["AttackAnimationPoint"] = 0.33; //attempt at fixing gargoyles attacking into the ground but doesnt really work
+      
     }
+
+	if(spawningZombie){
+    //regular zombie specific stuff here
+		keyvalues["StatusHealth"] = (30 + Math.max(Math.floor(time - 30) / 2, 0)) * ((f - 1) / 30 + 1);
+		keyvalues["StatusHealthRegen"] = Math.floor(Math.sqrt(f)) / 2;
+		keyvalues["ArmorPhysical"] = Math.floor(f - 1);
+		keyvalues["AttackDamageMin"] = 37 * f * Math.min(1, time / 360 + 0.5);
+		keyvalues["AttackDamageMax"] = 45 * f * Math.min(1, time / 360 + 0.5);
+		keyvalues["BountyGoldMin"] = 30 * Math.sqrt(f);
+		keyvalues["BountyGoldMax"] = 30 * Math.sqrt(f);
+		keyvalues["ModelScale"] = Math.min(0.95 + 0.1 * f, 2);
+		keyvalues["BountyXP"] = 75 * f;
+        
+        keyvalues["Ability1"] = "";
+        keyvalues["Ability2"] = "";
+	}
+    
+
 });
 
 game.hook("Dota_OnUnitThink", function(unit){
@@ -176,7 +197,6 @@ function spawnZombies(factor){
 				
 				hero.zombieFactor -= thisFactor;
 				hero.zombies.push(spawnZombie(hero, thisFactor));
-                hero.zombies.push(spawnFlyingZombie(hero, thisFactor)); //add flying zombie
 			}else if(time > 30) {
 				hero.zombieFactor += factor * Math.pow(time / 180, 2);
 			}
@@ -185,10 +205,25 @@ function spawnZombies(factor){
 }
 
 function spawnZombie(hero, factor){
-	spawningZombie = true;
+    var zombieType = Math.floor((Math.random()*2)+1); //generate a rand number between 1 and 2
+    //var zombieType = FLYING_ZOMBIE_TYPE; //generate static number 2
+    var zombie;
+    
+    if(zombieType==REGULAR_ZOMBIE_TYPE ){
+    spawningZombie = true;
+    zombie = dota.createUnit("npc_dota_unit_undying_zombie", hero.netprops.m_iTeamNum == 2 ? 3 : 2);
+    }else if(zombieType==FLYING_ZOMBIE_TYPE){
+    spawningFlyingZombie = true;
+    //zombie = dota.createUnit("npc_dota_neutral_black_drake", hero.netprops.m_iTeamNum == 2 ? 3 : 2);
+    zombie = dota.createUnit("npc_dota_visage_familiar", hero.netprops.m_iTeamNum == 2 ? 3 : 2);
+    } else {
+    zombie = dota.createUnit("npc_dota_neutral_satyr_soulstealer", hero.netprops.m_iTeamNum == 2 ? 3 : 2);
+    throw new Error("Error: zombie not spawned due to invalid zombie type");
+    
+    }
+
 	spawningZombieFactor = factor;
-	var zombie = dota.createUnit("npc_dota_unit_undying_zombie", hero.netprops.m_iTeamNum == 2 ? 3 : 2);
-	
+
 	// The zombie will appear 1800 units away from the hero
 	var vec = hero.netprops.m_vecOrigin;
 	var ang = Math.random() * 2 * Math.PI;
@@ -215,46 +250,16 @@ function spawnZombie(hero, factor){
 			dota.remove(zombie);
 		}
 	}, 30000);
+    
+	if(zombieType==REGULAR_ZOMBIE_TYPE ){
+    spawningZombie = false;
+    }else if(zombieType==FLYING_ZOMBIE_TYPE){
+    spawningFlyingZombie = false;
+    }
 	
-	spawningZombie = false;
 	return zombie;
 }
 
-function spawnFlyingZombie(hero, factor){
-	spawningFlyingZombie = true;
-	spawningZombieFactor = factor;
-	var zombie = dota.createUnit("npc_dota_visage_familiar1", hero.netprops.m_iTeamNum == 2 ? 3 : 2);
-	
-	// The zombie will appear 1800 units away from the hero
-	var vec = hero.netprops.m_vecOrigin;
-	var ang = Math.random() * 2 * Math.PI;
-	var d = 1800;
-	
-	var x = vec.x + Math.cos(ang) * d;
-	var y = vec.y + Math.sin(ang) * d;
-	zombie.isZombie = true;
-	zombie.hero = hero;
-	
-	dota.findClearSpaceForUnit(zombie, x, y, vec.z);
-	
-	// This needs to run on the next frame
-	nextFrameFuncs.push(function(){
-		// We make the zombie controllable by the player 0, then remove that, just so we can give the zombies an order
-		dota.setUnitControllableByPlayer(zombie, 0, true);
-		dota.executeOrders(0, dota.ORDER_TYPE_ATTACK, [zombie], hero, null, false, vec);
-		dota.setUnitControllableByPlayer(zombie, 0, false);
-	});
-	
-	timers.setTimeout(function(){
-		hero.zombies.remove(zombie);
-		if(zombie.isValid()){
-			dota.remove(zombie);
-		}
-	}, 30000);
-	
-	spawningFlyingZombie = false;
-	return zombie;
-}
 
 var hasLost = false;
 function checkDefeat(){
