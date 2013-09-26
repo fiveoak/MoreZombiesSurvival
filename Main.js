@@ -145,31 +145,34 @@ var f = Math.sqrt(spawningZombieFactor);
 game.hook("Dota_OnUnitThink", function(unit){
 	if(!unit.isValid()){
 		//throw new Error("This should never happen");
-        //wat
-	}
+        //check from newer zombie plugin:
+        throw new Error("This should never happen. Unit thinking without being valid: " + unit.getClassname());
+	} else {
 	
-	var clsname = unit.getClassname();
-    //for heroes
-	if(unit.isHero()){
-        //no hiding from zombies
-		dota.setUnitState(unit, dota.UNIT_STATE_REVEALED, true);
-		dota.setUnitState(unit, dota.UNIT_STATE_INVISIBLE, false);
-        //if a hero is not at a shop, set hero to be at regular shop
-		if(unit.netprops.m_iCurShop < 0 || unit.netprops.m_iCurShop > 2){
-			unit.netprops.m_iCurShop = 0;
-		}
-        //netprops.m_iCurShop: 0, reg shop, 1, side shop, 2, secret shop
-	}else if(clsname == "npc_dota_fort"){
-		dota.setUnitState(unit, dota.UNIT_STATE_INVULNERABLE, true);
-	}else if(clsname == "npc_dota_courier"){
-		dota.setUnitState(unit, dota.UNIT_STATE_INVULNERABLE, true);
-	}else if(unit.isZombie){
-        //for zombies: remove them from the game
-		if(unit.netprops.m_iHealth <= 0){
-			unit.hero.zombies.remove(unit);
-			dota.remove(unit);
-		}
-	}
+        var clsname = unit.getClassname();
+        //for heroes
+        if(unit.isHero()){
+            //no hiding from zombies
+            dota.setUnitState(unit, dota.UNIT_STATE_REVEALED, true);
+            dota.setUnitState(unit, dota.UNIT_STATE_INVISIBLE, false);
+            //if a hero is not at a shop, set hero to be at regular shop
+            if(unit.netprops.m_iCurShop < 0 || unit.netprops.m_iCurShop > 2){
+                unit.netprops.m_iCurShop = 0;
+            }
+            //netprops.m_iCurShop: 0, reg shop, 1, side shop, 2, secret shop
+        }else if(clsname == "npc_dota_fort"){
+            dota.setUnitState(unit, dota.UNIT_STATE_INVULNERABLE, true);
+        }else if(clsname == "npc_dota_courier"){
+            dota.setUnitState(unit, dota.UNIT_STATE_INVULNERABLE, true);
+        }else if(unit.isZombie){
+            //for zombies: remove them from the game
+            if(unit.netprops.m_iHealth <= 0){
+                unit.hero.zombies.remove(unit);
+                dota.remove(unit);
+            }
+        }
+    }
+        
 });
 
 game.hook("OnEntityDestroyed", function(ent){
