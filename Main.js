@@ -144,7 +144,8 @@ var f = Math.sqrt(spawningZombieFactor);
 
 game.hook("Dota_OnUnitThink", function(unit){
 	if(!unit.isValid()){
-		throw new Error("This should never happen");
+		//throw new Error("This should never happen");
+        //wat
 	}
 	
 	var clsname = unit.getClassname();
