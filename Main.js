@@ -146,7 +146,7 @@ game.hook("Dota_OnUnitThink", function(unit){
 	if(!unit.isValid()){
 		//throw new Error("This should never happen");
         //check from newer zombie plugin:
-        throw new Error("This should never happen. Unit thinking without being valid: " + unit.getClassname());
+        //throw new Error("This should never happen. Unit thinking without being valid: " + unit.getClassname());
 	} else {
 	
         var clsname = unit.getClassname();
