@@ -2,10 +2,13 @@
 const TEAM_SURVIVORS = 2;
 const TEAM_ZOMBIES = 3;
 const ZOMBIES_PER_HERO = 20; //20 zombies per hero
+
 const REGULAR_ZOMBIE_TYPE = 1;
 const FLYING_ZOMBIE_TYPE = 2;
+const SKELETON_ZOMBIE_TYPE = 3;
+const NUM_ZOMBIE_TYPES = 3;
 
-const DEBUG_MODE = 0; //0: debug inactive, 1: debug active
+//const DEBUG_MODE = 0; //0: debug inactive, 1: debug active
 
 var timers = require('timers');
 var zombies = 0.0;
@@ -13,6 +16,7 @@ var nextFrameFuncs = [];
 var time = 0.0;
 var spawningZombie = false;
 var spawningFlyingZombie = false;
+var spawningSkeletonZombie = false;
 var spawningZombieFactor = 1.0;
 var playerManager = null;
 
@@ -23,12 +27,13 @@ Array.prototype.remove = function(e){
 	}
 }
 
+//remove unnecessary units at the start of the map
 game.hook("OnMapStart", function(){
 	playerManager = game.findEntityByClassname(-1, "dota_player_manager");
 	
 	dota.loadParticleFile("particles/units/heroes/hero_undying.pcf");
 	
-	dota.removeAll("ent_dota_fountain*");
+	dota.removeAll("ent_dota_fountain*"); 
 	dota.removeAll("ent_dota_shop*");
 	dota.removeAll("npc_dota_tower*");
 	dota.removeAll("npc_dota_barracks*");
@@ -103,7 +108,7 @@ var f = Math.sqrt(spawningZombieFactor);
 
 	if(spawningZombie){
     //regular zombie specific stuff here
-		keyvalues["StatusHealth"] = (30 + Math.max(Math.floor(time - 30) / 2, 0)) * ((f - 1) / 30 + 1);
+		keyvalues["StatusHealth"] = (50 + Math.max(Math.floor(time - 30) / 2, 0)) * ((f - 1) / 30 + 1);
 		keyvalues["StatusHealthRegen"] = Math.floor(Math.sqrt(f)) / 2;
 		keyvalues["ArmorPhysical"] = Math.floor(f - 1);
 		keyvalues["AttackDamageMin"] = 37 * f * Math.min(1, time / 360 + 0.5);
@@ -117,6 +122,23 @@ var f = Math.sqrt(spawningZombieFactor);
         keyvalues["Ability2"] = "";
 	}
     
+    if (spawningSkeletonZombie){
+        //skeleton zombie specific stuff here
+		keyvalues["StatusHealth"] = (25 + Math.max(Math.floor(time - 30) / 2, 0)) * ((f - 1) / 30 + 1);
+		keyvalues["StatusHealthRegen"] = Math.floor(Math.sqrt(f)) / 2;
+		keyvalues["ArmorPhysical"] = Math.floor(f - 1);
+		keyvalues["AttackDamageMin"] = 37 * f * Math.min(1, time / 360 + 0.5);
+		keyvalues["AttackDamageMax"] = 45 * f * Math.min(1, time / 360 + 0.5);
+		keyvalues["BountyGoldMin"] = 35 * Math.sqrt(f);
+		keyvalues["BountyGoldMax"] = 35 * Math.sqrt(f);
+		keyvalues["ModelScale"] = Math.min(0.95 + 0.1 * f, 2);
+		keyvalues["BountyXP"] = 75 * f;
+        keyvalues["AttackRate"] = 1; // Speed of attack.
+        
+        keyvalues["Ability1"] = "";
+        keyvalues["Ability2"] = "";
+    }
+    
 
 });
 
@@ -126,18 +148,22 @@ game.hook("Dota_OnUnitThink", function(unit){
 	}
 	
 	var clsname = unit.getClassname();
+    //for heroes
 	if(unit.isHero()){
+        //no hiding from zombies
 		dota.setUnitState(unit, dota.UNIT_STATE_REVEALED, true);
 		dota.setUnitState(unit, dota.UNIT_STATE_INVISIBLE, false);
+        //if a hero is not at a shop, set hero to be at regular shop
 		if(unit.netprops.m_iCurShop < 0 || unit.netprops.m_iCurShop > 2){
 			unit.netprops.m_iCurShop = 0;
 		}
+        //netprops.m_iCurShop: 0, reg shop, 1, side shop, 2, secret shop
 	}else if(clsname == "npc_dota_fort"){
 		dota.setUnitState(unit, dota.UNIT_STATE_INVULNERABLE, true);
 	}else if(clsname == "npc_dota_courier"){
 		dota.setUnitState(unit, dota.UNIT_STATE_INVULNERABLE, true);
 	}else if(unit.isZombie){
-		//dota.setUnitState(unit, dota.UNIT_STATE_MAGIC_IMMUNE, true);
+        //for zombies: remove them from the game
 		if(unit.netprops.m_iHealth <= 0){
 			unit.hero.zombies.remove(unit);
 			dota.remove(unit);
@@ -151,11 +177,12 @@ game.hook("OnEntityDestroyed", function(ent){
 	}
 });
 
-game.hook("Dota_OnBuyItem", function(unit, item, playerID, unknown){
-	if(item == "item_blink" || item == "item_recipe_force_staff" || item == "item_force_staff"){
-		return false;
-	}
-});
+// no longer need to disable blink items with flying zombies
+// game.hook("Dota_OnBuyItem", function(unit, item, playerID, unknown){
+	// if(item == "item_blink" || item == "item_recipe_force_staff" || item == "item_force_staff"){
+		// return false;
+	// }
+// });
 
 timers.setInterval(function(){
 	for (var i = 0; i < server.clients.length; i++) {
@@ -205,8 +232,8 @@ function spawnZombies(factor){
 }
 
 function spawnZombie(hero, factor){
-    var zombieType = Math.floor((Math.random()*2)+1); //generate a rand number between 1 and 2
-    //var zombieType = FLYING_ZOMBIE_TYPE; //generate static number 2
+    var zombieType = Math.floor((Math.random()*NUM_ZOMBIE_TYPES)+1); //generate a rand number between 1 and num types
+    //var zombieType = SKELETON_ZOMBIE_TYPE; //debug: generate static type
     var zombie;
     
     if(zombieType==REGULAR_ZOMBIE_TYPE ){
@@ -214,10 +241,12 @@ function spawnZombie(hero, factor){
     zombie = dota.createUnit("npc_dota_unit_undying_zombie", hero.netprops.m_iTeamNum == 2 ? 3 : 2);
     }else if(zombieType==FLYING_ZOMBIE_TYPE){
     spawningFlyingZombie = true;
-    //zombie = dota.createUnit("npc_dota_neutral_black_drake", hero.netprops.m_iTeamNum == 2 ? 3 : 2);
     zombie = dota.createUnit("npc_dota_visage_familiar", hero.netprops.m_iTeamNum == 2 ? 3 : 2);
+    } else if(zombieType==SKELETON_ZOMBIE_TYPE){
+    spawningSkeletonZombie = true;
+    zombie = dota.createUnit("npc_dota_dark_troll_warlord_skeleton_warrior", hero.netprops.m_iTeamNum == 2 ? 3 : 2);
     } else {
-    zombie = dota.createUnit("npc_dota_neutral_satyr_soulstealer", hero.netprops.m_iTeamNum == 2 ? 3 : 2);
+    //zombie = dota.createUnit("npc_dota_neutral_satyr_soulstealer", hero.netprops.m_iTeamNum == 2 ? 3 : 2);
     throw new Error("Error: zombie not spawned due to invalid zombie type");
     
     }
@@ -255,6 +284,8 @@ function spawnZombie(hero, factor){
     spawningZombie = false;
     }else if(zombieType==FLYING_ZOMBIE_TYPE){
     spawningFlyingZombie = false;
+    }else if(zombieType==SKELETON_ZOMBIE_TYPE){
+    spawningSkeletonZombie = false;
     }
 	
 	return zombie;
@@ -262,6 +293,7 @@ function spawnZombie(hero, factor){
 
 
 var hasLost = false;
+//defeat condition: if all heroes are dead on a team simultaneously
 function checkDefeat(){
 	if(hasLost) return;
 	if(time < 30) return;
