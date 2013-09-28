@@ -8,6 +8,8 @@ const FLYING_ZOMBIE_TYPE = 2;
 const SKELETON_ZOMBIE_TYPE = 3;
 const NUM_ZOMBIE_TYPES = 3;
 
+const DEFAULT_DIFFICULTY_MULTIPLIER = 1.0;
+
 //const DEBUG_MODE = 0; //0: debug inactive, 1: debug active
 
 var timers = require('timers');
@@ -19,6 +21,8 @@ var spawningFlyingZombie = false;
 var spawningSkeletonZombie = false;
 var spawningZombieFactor = 1.0;
 var playerManager = null;
+
+var difficultyMultiplier = DEFAULT_DIFFICULTY_MULTIPLIER;
 
 Array.prototype.remove = function(e){
 	var i = this.indexOf(e);
@@ -65,7 +69,7 @@ game.hook("OnGameFrame", function(){
 	
 	var zombieFactor = Math.pow(time/300, 2) + 0.01;
 	spawnZombies(zombieFactor);
-	checkDefeat(); //debug:: comment to disable defeat check
+	//checkDefeat(); //debug:: comment to disable defeat check
 });
 
 game.hook("Dota_OnUnitParsed", function(unit, keyvalues){
@@ -73,11 +77,11 @@ var f = Math.sqrt(spawningZombieFactor);
 
     if(spawningFlyingZombie){
     //flying zombie specific stuff here
-        keyvalues["StatusHealth"] = (15 + Math.max(Math.floor(time - 30) / 2, 0)) * ((f - 1) / 30 + 1);
+        keyvalues["StatusHealth"] = difficultyMultiplier * (15 + Math.max(Math.floor(time - 30) / 2, 0)) * ((f - 1) / 30 + 1);
 		keyvalues["StatusHealthRegen"] = Math.floor(Math.sqrt(f)) / 4;
 		keyvalues["ArmorPhysical"] = Math.floor(f - 1);
-		keyvalues["AttackDamageMin"] = 11 * f * Math.min(1, time / 360 + 0.5);
-		keyvalues["AttackDamageMax"] = 15 * f * Math.min(1, time / 360 + 0.5);
+		keyvalues["AttackDamageMin"] = difficultyMultiplier * 11 * f * Math.min(1, time / 360 + 0.5);
+		keyvalues["AttackDamageMax"] = difficultyMultiplier * 15 * f * Math.min(1, time / 360 + 0.5);
 		keyvalues["BountyGoldMin"] = 20 * Math.sqrt(f);
 		keyvalues["BountyGoldMax"] = 20 * Math.sqrt(f);
 		keyvalues["ModelScale"] = Math.min(0.95 + 0.1 * f, 2);
@@ -108,11 +112,11 @@ var f = Math.sqrt(spawningZombieFactor);
 
 	if(spawningZombie){
     //regular zombie specific stuff here
-		keyvalues["StatusHealth"] = (50 + Math.max(Math.floor(time - 30) / 2, 0)) * ((f - 1) / 30 + 1);
+		keyvalues["StatusHealth"] = difficultyMultiplier * (50 + Math.max(Math.floor(time - 30) / 2, 0)) * ((f - 1) / 30 + 1);
 		keyvalues["StatusHealthRegen"] = Math.floor(Math.sqrt(f)) / 2;
 		keyvalues["ArmorPhysical"] = Math.floor(f - 1);
-		keyvalues["AttackDamageMin"] = 37 * f * Math.min(1, time / 360 + 0.5);
-		keyvalues["AttackDamageMax"] = 45 * f * Math.min(1, time / 360 + 0.5);
+		keyvalues["AttackDamageMin"] = difficultyMultiplier * 37 * f * Math.min(1, time / 360 + 0.5);
+		keyvalues["AttackDamageMax"] = difficultyMultiplier * 45 * f * Math.min(1, time / 360 + 0.5);
 		keyvalues["BountyGoldMin"] = 30 * Math.sqrt(f);
 		keyvalues["BountyGoldMax"] = 30 * Math.sqrt(f);
 		keyvalues["ModelScale"] = Math.min(0.95 + 0.1 * f, 2);
@@ -124,11 +128,11 @@ var f = Math.sqrt(spawningZombieFactor);
     
     if (spawningSkeletonZombie){
         //skeleton zombie specific stuff here
-		keyvalues["StatusHealth"] = (25 + Math.max(Math.floor(time - 30) / 2, 0)) * ((f - 1) / 30 + 1);
+		keyvalues["StatusHealth"] = difficultyMultiplier * (25 + Math.max(Math.floor(time - 30) / 2, 0)) * ((f - 1) / 30 + 1);
 		keyvalues["StatusHealthRegen"] = Math.floor(Math.sqrt(f)) / 2;
 		keyvalues["ArmorPhysical"] = Math.floor(f - 1);
-		keyvalues["AttackDamageMin"] = 37 * f * Math.min(1, time / 360 + 0.5);
-		keyvalues["AttackDamageMax"] = 45 * f * Math.min(1, time / 360 + 0.5);
+		keyvalues["AttackDamageMin"] = difficultyMultiplier * 37 * f * Math.min(1, time / 360 + 0.5);
+		keyvalues["AttackDamageMax"] = difficultyMultiplier * 45 * f * Math.min(1, time / 360 + 0.5);
 		keyvalues["BountyGoldMin"] = 35 * Math.sqrt(f);
 		keyvalues["BountyGoldMax"] = 35 * Math.sqrt(f);
 		keyvalues["ModelScale"] = Math.min(0.95 + 0.1 * f, 2);
@@ -330,6 +334,15 @@ function checkDefeat(){
 		hasLost = true;
 	}
 }
+
+
+//add plugin settings on d2ware lobby (thanks Skino of Custom Spell Power)
+plugin.get("LobbyManager", function(lobbyManager)
+{
+	var str = lobbyManager.getOptionsForPlugin("MoreZombiesSurvival")["Multiplier"];
+	difficultyMultiplier = str.split("x")[0];
+});
+
 
 function blockHeroes(){
 	dota.setHeroAvailable(dota.HERO_UNDYING, false);

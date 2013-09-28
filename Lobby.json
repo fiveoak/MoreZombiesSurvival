@@ -1,0 +1,17 @@
+{
+	"mainFields": ["Difficulty"],
+	"fields":
+	{
+		"Difficulty":
+		{
+			"type": "select",
+			"options":
+			[
+				"x0.5",
+				"x1.0",
+				"x2.0",
+				"x5.0"
+			]
+		}
+	}
+}
