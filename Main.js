@@ -69,7 +69,7 @@ game.hook("OnGameFrame", function(){
 	
 	var zombieFactor = Math.pow(time/300, 2) + 0.01;
 	spawnZombies(zombieFactor);
-	//checkDefeat(); //debug:: comment to disable defeat check
+	checkDefeat(); //debug:: comment to disable defeat check
 });
 
 game.hook("Dota_OnUnitParsed", function(unit, keyvalues){
@@ -339,8 +339,8 @@ function checkDefeat(){
 //add plugin settings on d2ware lobby (thanks Skino of Custom Spell Power)
 plugin.get("LobbyManager", function(lobbyManager)
 {
-	var str = lobbyManager.getOptionsForPlugin("MoreZombiesSurvival")["Multiplier"];
-	difficultyMultiplier = str.split("x")[0];
+	var str1 = lobbyManager.getOptionsForPlugin("MoreZombiesSurvival")["Multiplier"];
+	difficultyMultiplier = str1.split("x")[0];
 });
 
 

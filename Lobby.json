@@ -1,16 +1,16 @@
 {
-	"mainFields": ["Difficulty"],
+	"mainFields": ["Multiplier"],
 	"fields":
 	{
-		"Difficulty":
+		"Multiplier":
 		{
 			"type": "select",
 			"options":
 			[
-				"x0.5",
-				"x1.0",
-				"x2.0",
-				"x5.0"
+				"0.5x HP and Damage",
+				"1.0x HP and Damage",
+				"2.0x HP and Damage",
+				"5.0x HP and Damage"
 			]
 		}
 	}
