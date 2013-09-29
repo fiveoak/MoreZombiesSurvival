@@ -1,2 +1,5 @@
 # Source archives
 *.zip
+
+# Misc matlab files for plotting/testing
+*.matlab

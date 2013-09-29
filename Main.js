@@ -6,7 +6,8 @@ const ZOMBIES_PER_HERO = 20; //20 zombies per hero
 const REGULAR_ZOMBIE_TYPE = 1;
 const FLYING_ZOMBIE_TYPE = 2;
 const SKELETON_ZOMBIE_TYPE = 3;
-const NUM_ZOMBIE_TYPES = 3;
+const GHOST_ZOMBIE_TYPE = 4;
+const NUM_ZOMBIE_TYPES = 4;
 
 const DEFAULT_DIFFICULTY_MULTIPLIER = 1.0;
 
@@ -19,6 +20,7 @@ var time = 0.0;
 var spawningZombie = false;
 var spawningFlyingZombie = false;
 var spawningSkeletonZombie = false;
+var spawningGhostZombie = false;
 var spawningZombieFactor = 1.0;
 var playerManager = null;
 
@@ -115,8 +117,8 @@ var f = Math.sqrt(spawningZombieFactor);
 		keyvalues["StatusHealth"] = difficultyMultiplier * (50 + Math.max(Math.floor(time - 30) / 2, 0)) * ((f - 1) / 30 + 1);
 		keyvalues["StatusHealthRegen"] = Math.floor(Math.sqrt(f)) / 2;
 		keyvalues["ArmorPhysical"] = Math.floor(f - 1);
-		keyvalues["AttackDamageMin"] = difficultyMultiplier * 37 * f * Math.min(1, time / 360 + 0.5);
-		keyvalues["AttackDamageMax"] = difficultyMultiplier * 45 * f * Math.min(1, time / 360 + 0.5);
+		keyvalues["AttackDamageMin"] = difficultyMultiplier * 22 * f * Math.min(1, time / 360 + 0.5);
+		keyvalues["AttackDamageMax"] = difficultyMultiplier * 30 * f * Math.min(1, time / 360 + 0.5);
 		keyvalues["BountyGoldMin"] = 30 * Math.sqrt(f);
 		keyvalues["BountyGoldMax"] = 30 * Math.sqrt(f);
 		keyvalues["ModelScale"] = Math.min(0.95 + 0.1 * f, 2);
@@ -135,6 +137,24 @@ var f = Math.sqrt(spawningZombieFactor);
 		keyvalues["AttackDamageMax"] = difficultyMultiplier * 45 * f * Math.min(1, time / 360 + 0.5);
 		keyvalues["BountyGoldMin"] = 35 * Math.sqrt(f);
 		keyvalues["BountyGoldMax"] = 35 * Math.sqrt(f);
+		keyvalues["ModelScale"] = Math.min(0.95 + 0.1 * f, 2);
+		keyvalues["BountyXP"] = 75 * f;
+        keyvalues["AttackRate"] = 1; // Speed of attack.
+        
+        keyvalues["Ability1"] = "";
+        keyvalues["Ability2"] = "";
+    }
+
+    if (spawningGhostZombie){
+        //ghost zombie specific stuff here
+
+		keyvalues["StatusHealth"] = difficultyMultiplier * (10 + Math.max(Math.floor(time - 30) / 2, 0)) * ((f - 1) / 30 + 1);
+		keyvalues["StatusHealthRegen"] = Math.floor(Math.sqrt(f)) / 2;
+		keyvalues["ArmorPhysical"] = Math.floor(f - 1);
+		keyvalues["AttackDamageMin"] = difficultyMultiplier * 18 * f * Math.min(1, time / 360 + 0.5);
+		keyvalues["AttackDamageMax"] = difficultyMultiplier * 23 * f * Math.min(1, time / 360 + 0.5);
+		keyvalues["BountyGoldMin"] = 25 * Math.sqrt(f);
+		keyvalues["BountyGoldMax"] = 25 * Math.sqrt(f);
 		keyvalues["ModelScale"] = Math.min(0.95 + 0.1 * f, 2);
 		keyvalues["BountyXP"] = 75 * f;
         keyvalues["AttackRate"] = 1; // Speed of attack.
@@ -203,7 +223,7 @@ timers.setInterval(function(){
 			hero.zombieFactor += time / 120;
 		}
 	}
-}, 2.5 * 60 * 1000);
+}, 2.5 * 60 * 1000); //every 2.5 minutes
 
 function spawnZombies(factor){
 	for (var i = 0; i < server.clients.length; i++) {
@@ -244,7 +264,7 @@ function spawnZombie(hero, factor){
     //var zombieType = SKELETON_ZOMBIE_TYPE; //debug: generate static type
     var zombie;
     
-    if(zombieType==REGULAR_ZOMBIE_TYPE ){
+    if(zombieType==REGULAR_ZOMBIE_TYPE){
     spawningZombie = true;
     zombie = dota.createUnit("npc_dota_unit_undying_zombie", hero.netprops.m_iTeamNum == 2 ? 3 : 2);
     }else if(zombieType==FLYING_ZOMBIE_TYPE){
@@ -253,10 +273,12 @@ function spawnZombie(hero, factor){
     } else if(zombieType==SKELETON_ZOMBIE_TYPE){
     spawningSkeletonZombie = true;
     zombie = dota.createUnit("npc_dota_dark_troll_warlord_skeleton_warrior", hero.netprops.m_iTeamNum == 2 ? 3 : 2);
-    } else {
+    } else if(zombieType==GHOST_ZOMBIE_TYPE){
+    spawningGhostZombie = true;	
+    zombie = dota.createUnit("npc_dota_neutral_ghost", hero.netprops.m_iTeamNum == 2 ? 3 : 2);
+	} else {
     //zombie = dota.createUnit("npc_dota_neutral_satyr_soulstealer", hero.netprops.m_iTeamNum == 2 ? 3 : 2);
     throw new Error("Error: zombie not spawned due to invalid zombie type");
-    
     }
 
 	spawningZombieFactor = factor;
@@ -288,12 +310,14 @@ function spawnZombie(hero, factor){
 		}
 	}, 30000);
     
-	if(zombieType==REGULAR_ZOMBIE_TYPE ){
+	if (zombieType == REGULAR_ZOMBIE_TYPE){
     spawningZombie = false;
-    }else if(zombieType==FLYING_ZOMBIE_TYPE){
+    } else if (zombieType == FLYING_ZOMBIE_TYPE){
     spawningFlyingZombie = false;
-    }else if(zombieType==SKELETON_ZOMBIE_TYPE){
+    } else if (zombieType == SKELETON_ZOMBIE_TYPE){
     spawningSkeletonZombie = false;
+    } else if (zombieType == GHOST_ZOMBIE_TYPE){
+    spawningGhostZombie = false;
     }
 	
 	return zombie;
