@@ -299,7 +299,9 @@ function spawnZombie(hero, factor){
 	nextFrameFuncs.push(function(){
 		// We make the zombie controllable by the player 0, then remove that, just so we can give the zombies an order
 		dota.setUnitControllableByPlayer(zombie, 0, true);
-		dota.executeOrders(0, dota.ORDER_TYPE_ATTACK, [zombie], hero, null, false, vec);
+		if(zombie.isValid()){
+			dota.executeOrders(0, dota.ORDER_TYPE_ATTACK, [zombie], hero, null, false, vec);
+		}
 		dota.setUnitControllableByPlayer(zombie, 0, false);
 	});
 	
